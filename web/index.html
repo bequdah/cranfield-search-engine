@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cranfield Search Engine</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #09090b;
+            --glass: rgba(255, 255, 255, 0.05);
+            --border: rgba(255, 255, 255, 0.1);
+            --primary: #ec4899;
+            --secondary: #8b5cf6;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(236, 72, 153, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.15) 0px, transparent 50%);
+            background-attachment: fixed;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            margin-top: 10vh;
+            text-align: center;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        .search-container {
+            margin-top: 2.5rem;
+            width: 100%;
+            max-width: 600px;
+            animation: fadeInUp 1s ease-out 0.2s both;
+        }
+
+        .search-input-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 1.2rem 1.5rem;
+            padding-right: 100px;
+            font-size: 1.2rem;
+            color: var(--text);
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+            outline: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-box:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(236, 72, 153, 0.2);
+        }
+
+        .search-btn {
+            position: absolute;
+            right: 8px;
+            top: 8px;
+            bottom: 8px;
+            padding: 0 1.5rem;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 40px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .search-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(236, 72, 153, 0.4);
+        }
+
+        .tokens-display {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            min-height: 30px;
+        }
+
+        .token {
+            background: rgba(139, 92, 246, 0.2);
+            color: #d8b4fe;
+            padding: 0.2rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .results-container {
+            margin-top: 2rem;
+            width: 100%;
+            max-width: 800px;
+            padding: 0 1rem;
+            padding-bottom: 4rem;
+        }
+
+        .stats {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            text-align: right;
+        }
+
+        .result-card {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s, border-color 0.3s;
+            animation: slideUp 0.5s ease-out both;
+        }
+
+        .result-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(139, 92, 246, 0.5);
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.8rem;
+        }
+
+        .doc-id {
+            font-weight: 600;
+            color: var(--text);
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .doc-id::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+        }
+
+        .score {
+            background: rgba(236, 72, 153, 0.1);
+            color: var(--primary);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .snippet {
+            color: var(--text-muted);
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        .loader {
+            display: none;
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 3rem auto;
+        }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Cranfield Search</h1>
+        <p class="subtitle">Vector Space Model (lnc.ltc)</p>
+    </header>
+
+    <div class="search-container">
+        <div class="search-input-wrapper">
+            <input type="text" id="searchInput" class="search-box" placeholder="What similarity laws must be obeyed?..." onkeypress="handleKeyPress(event)">
+            <button class="search-btn" onclick="performSearch()">Search</button>
+        </div>
+        <div class="tokens-display" id="tokensDisplay"></div>
+    </div>
+
+    <div class="loader" id="loader"></div>
+
+    <div class="results-container" id="resultsContainer">
+        <!-- Results will be injected here -->
+    </div>
+
+    <script>
+        async function performSearch() {
+            const query = document.getElementById('searchInput').value;
+            if (!query.trim()) return;
+
+            const loader = document.getElementById('loader');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const tokensDisplay = document.getElementById('tokensDisplay');
+
+            resultsContainer.innerHTML = '';
+            tokensDisplay.innerHTML = '';
+            loader.style.display = 'block';
+
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query, k: 30 })
+                });
+
+                const data = await response.json();
+                loader.style.display = 'none';
+
+                // Display Tokens
+                if(data.query_tokens) {
+                    data.query_tokens.forEach(token => {
+                        const span = document.createElement('span');
+                        span.className = 'token';
+                        span.innerText = token;
+                        tokensDisplay.appendChild(span);
+                    });
+                }
+
+                // Display Stats
+                if(data.results.length > 0) {
+                    const stats = document.createElement('div');
+                    stats.className = 'stats';
+                    stats.innerText = `Found ${data.results.length} results in ${data.time_ms}ms`;
+                    resultsContainer.appendChild(stats);
+                } else {
+                    resultsContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); margin-top: 3rem;">No relevant documents found.</div>';
+                }
+
+                // Display Results
+                data.results.forEach((item, index) => {
+                    const delay = index * 0.05; // Staggered animation
+                    
+                    const card = document.createElement('div');
+                    card.className = 'result-card';
+                    card.style.animationDelay = `${delay}s`;
+                    
+                    card.innerHTML = `
+                        <div class="result-header">
+                            <div class="doc-id">Document #${item.doc_id}</div>
+                            <div class="score">Score: ${item.score}</div>
+                        </div>
+                        <div class="snippet">${item.snippet}</div>
+                    `;
+                    resultsContainer.appendChild(card);
+                });
+
+            } catch (err) {
+                loader.style.display = 'none';
+                resultsContainer.innerHTML = '<div style="color: #ef4444; text-align: center; margin-top: 2rem;">Error connecting to server. Make sure app.py is running.</div>';
+            }
+        }
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        }
+    </script>
+</body>
+</html>
