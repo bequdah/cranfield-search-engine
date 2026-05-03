@@ -41,7 +41,10 @@ def compute_map(all_retrieved: Dict[int, List[int]], qrels: List[dict]) -> float
             relevant_by_query[q_id].add(d_id)
 
     aps = []
-    for q_id, relevant_docs in relevant_by_query.items():
+    all_query_ids = set(all_retrieved.keys()) | set(relevant_by_query.keys())
+
+    for q_id in all_query_ids:
+        relevant_docs = relevant_by_query.get(q_id, set())
         retrieved = all_retrieved.get(q_id, [])
         aps.append(compute_ap(retrieved, relevant_docs))
 
@@ -89,14 +92,16 @@ def compute_ndcg(all_retrieved: Dict[int, List[int]], qrels: List[dict], k: int 
         true_rel_by_query[q_id][d_id] = convert_relevance(raw_rel)
 
     ndcg_scores = []
+    all_query_ids = set(all_retrieved.keys()) | set(true_rel_by_query.keys())
 
-    for q_id, doc_relevances in true_rel_by_query.items():
+    for q_id in all_query_ids:
+        doc_relevances = true_rel_by_query.get(q_id, {})
         retrieved = all_retrieved.get(q_id, [])[:k]
 
         retrieved_rels = [doc_relevances.get(doc_id, 0) for doc_id in retrieved]
         dcg = compute_dcg(retrieved_rels)
 
-        ideal_rels = sorted(doc_relevances.values(), reverse=True)[:k]
+        ideal_rels = sorted([r for r in doc_relevances.values() if r > 0], reverse=True)[:k]
         idcg = compute_dcg(ideal_rels)
 
         ndcg_scores.append(dcg / idcg if idcg > 0 else 0.0)

@@ -65,8 +65,9 @@ def main():
     all_retrieved = {}
 
     for q_id, tokens in clean_queries.items():
-        results = vsm.get_top_k(tokens, k=K)
-        all_retrieved[q_id] = [doc_id for doc_id, _ in results]
+        # Retrieve all documents for accurate MAP calculation
+        all_results = vsm.get_scores(tokens)
+        all_retrieved[q_id] = [doc_id for doc_id, _ in all_results]
 
     print(f"    Time: {time.time() - start:.2f}s")
 

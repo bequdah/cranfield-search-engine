@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import string
+import re
 from pathlib import Path
 from typing import Dict, List
 
@@ -16,6 +17,7 @@ def ensure_nltk_resources() -> None:
     """
     resources = [
         ("tokenizers/punkt", "punkt"),
+        ("tokenizers/punkt_tab", "punkt_tab"),
         ("corpora/stopwords", "stopwords"),
     ]
 
@@ -37,37 +39,33 @@ def preprocess_text(text: str) -> List[str]:
     """
     Apply standard IR preprocessing:
     1. Lowercasing
-    2. Tokenization
-    3. Stopword removal
-    4. Punctuation/noise removal
+    2. Punctuation removal (replaced with space)
+    3. Tokenization
+    4. Stopword removal
     5. Stemming
 
     Returns:
         A list of cleaned, stemmed tokens.
     """
     text = text.lower()
+    
+    # Replace punctuation with spaces to separate hyphenated words correctly
+    text = re.sub(r'[^a-z0-9]', ' ', text)
+    
     tokens = word_tokenize(text)
 
     cleaned_tokens: List[str] = []
 
     for token in tokens:
-        # Skip pure punctuation tokens
-        if token in PUNCT:
-            continue
-
-        # Skip tokens made entirely of punctuation
-        if all(char in PUNCT for char in token):
-            continue
-
         # Skip stopwords
         if token in STOP_WORDS:
             continue
 
-        # Keep only tokens that contain at least one alphanumeric character
-        if not any(char.isalnum() for char in token):
+        # Skip pure digits (optional but standard for Cranfield)
+        if token.isdigit():
             continue
 
-        # STEMMING RE-ENABLED
+        # Stemming
         stemmed = STEMMER.stem(token)
         cleaned_tokens.append(stemmed)
 

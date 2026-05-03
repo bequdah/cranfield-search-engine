@@ -47,6 +47,7 @@
             font-weight: 800;
             background: linear-gradient(to right, var(--primary), var(--secondary));
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 0.5rem;
         }
@@ -211,6 +212,75 @@
             margin: 3rem auto;
         }
 
+        .sample-container {
+            margin-top: 1.5rem;
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            justify-content: center;
+            animation: fadeInUp 1s ease-out 0.4s both;
+        }
+
+        .sample-select {
+            padding: 0.8rem 1.2rem;
+            width: 100%;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem;
+            backdrop-filter: blur(10px);
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ec4899' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1em;
+        }
+
+        .sample-select option {
+            background-color: var(--bg);
+            color: var(--text);
+        }
+
+        .ground-truth-box {
+            display: none;
+            margin-top: 1.5rem;
+            width: 100%;
+            max-width: 800px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            color: #10b981;
+            font-size: 0.9rem;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .ground-truth-title {
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .ground-truth-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .gt-item {
+            background: rgba(16, 185, 129, 0.2);
+            padding: 0.2rem 0.6rem;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
         @keyframes spin { 100% { transform: rotate(360deg); } }
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -231,7 +301,20 @@
             <input type="text" id="searchInput" class="search-box" placeholder="What similarity laws must be obeyed?..." onkeypress="handleKeyPress(event)">
             <button class="search-btn" onclick="performSearch()">Search</button>
         </div>
+        <div class="sample-container">
+            <select id="sampleSelect" class="sample-select" onchange="loadSampleQuery()">
+                <option value="">-- Or select a Sample Query to test --</option>
+            </select>
+        </div>
         <div class="tokens-display" id="tokensDisplay"></div>
+    </div>
+
+    <div class="ground-truth-box" id="groundTruthBox">
+        <div class="ground-truth-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            Official Ground Truth (Expected Docs)
+        </div>
+        <div class="ground-truth-items" id="groundTruthItems"></div>
     </div>
 
     <div class="loader" id="loader"></div>
@@ -241,6 +324,55 @@
     </div>
 
     <script>
+        let sampleQueries = [];
+
+        // Load sample queries on startup
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const response = await fetch('/api/samples');
+                sampleQueries = await response.json();
+                
+                const select = document.getElementById('sampleSelect');
+                sampleQueries.forEach((q, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `Query ${q.id}: ${q.text.substring(0, 60)}...`;
+                    select.appendChild(option);
+                });
+            } catch (e) {
+                console.error("Failed to load sample queries", e);
+            }
+        });
+
+        function loadSampleQuery() {
+            const select = document.getElementById('sampleSelect');
+            const index = select.value;
+            if (index === "") {
+                document.getElementById('groundTruthBox').style.display = 'none';
+                return;
+            }
+
+            const q = sampleQueries[index];
+            document.getElementById('searchInput').value = q.text;
+            
+            // Display Ground Truth
+            const gtBox = document.getElementById('groundTruthBox');
+            const gtItems = document.getElementById('groundTruthItems');
+            gtItems.innerHTML = '';
+            
+            q.ground_truth.forEach(gt => {
+                const el = document.createElement('div');
+                el.className = 'gt-item';
+                el.innerText = `Doc #${gt.doc_id} (Rel: ${gt.relevance})`;
+                gtItems.appendChild(el);
+            });
+            
+            gtBox.style.display = 'block';
+            
+            // Auto trigger search
+            performSearch();
+        }
+
         async function performSearch() {
             const query = document.getElementById('searchInput').value;
             if (!query.trim()) return;
@@ -257,7 +389,7 @@
                 const response = await fetch('/api/search', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: query, k: 30 })
+                    body: JSON.stringify({ query: query, k: 10 })
                 });
 
                 const data = await response.json();

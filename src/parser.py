@@ -53,7 +53,7 @@ def parse_cran_docs(file_path: str | Path) -> Dict[int, str]:
                 continue
 
             # Field marker
-            if line.startswith("."):
+            if line.startswith(".") and line.split()[0] in {".I", ".T", ".W", ".A", ".B"}:
                 current_field = line.strip()
                 continue
 
@@ -110,7 +110,7 @@ def parse_cran_queries(file_path: str | Path) -> Dict[int, str]:
                 continue
 
             # Field marker
-            if line.startswith("."):
+            if line.startswith(".") and line.split()[0] in {".I", ".T", ".W", ".A", ".B"}:
                 current_field = line.strip()
                 continue
 
@@ -150,12 +150,12 @@ def parse_cran_qrels(file_path: str | Path) -> List[dict]:
                 continue
 
             parts = line.split()
-            if len(parts) != 3:
+            if len(parts) < 3:
                 raise ValueError(
                     f"Invalid qrel format at line {line_number}: {raw_line!r}"
                 )
 
-            query_id, doc_id, relevance = map(int, parts)
+            query_id, doc_id, relevance = int(parts[0]), int(parts[1]), int(parts[2])
 
             qrels.append(
                 {

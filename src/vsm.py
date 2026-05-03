@@ -97,9 +97,10 @@ class VectorSpaceModel:
                 normalized_weight = weight / doc_norm
                 self.inverted_index[term][doc_id] = normalized_weight
 
-    def get_top_k(self, query_tokens: List[str], k: int = 10) -> List[Tuple[int, float]]:
+    def get_scores(self, query_tokens: List[str]) -> List[Tuple[int, float]]:
         """
-        Retrieve top-k documents using cosine similarity with lnc.ltc.
+        Retrieve all documents sorted by cosine similarity with lnc.ltc.
+        This is necessary for accurate MAP calculation.
 
         Query weighting = ltc:
             l = log tf
@@ -122,6 +123,7 @@ class VectorSpaceModel:
 
         for term, count in query_term_counts.items():
             if term not in self.idf_dict:
+                # OOV terms are safely ignored as they have 0 weight
                 continue
 
             log_tf = compute_log_tf(count)           # l
@@ -146,9 +148,15 @@ class VectorSpaceModel:
             for doc_id, d_weight in postings.items():
                 scores[doc_id] += q_weight * d_weight
 
-        # Step 5: Sort Results
+        # Step 5: Sort Results (returns ALL documents)
         ranked_results = sorted(scores.items(), key=lambda x: (-x[1], x[0]))
-        return ranked_results[:k]
+        return ranked_results
+
+    def get_top_k(self, query_tokens: List[str], k: int = 10) -> List[Tuple[int, float]]:
+        """
+        Retrieve only the top-k documents.
+        """
+        return self.get_scores(query_tokens)[:k]
 
 
 if __name__ == "__main__":

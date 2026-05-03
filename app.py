@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from src.parser import parse_cran_docs
+from src.parser import parse_cran_docs, parse_cran_queries, parse_cran_qrels
 from src.preprocess import preprocess_text, preprocess_collection
 from src.vsm import VectorSpaceModel
 
@@ -25,15 +25,43 @@ try:
     clean_docs = preprocess_collection(raw_docs)
     vsm = VectorSpaceModel()
     vsm.build_index(clean_docs)
+    
+    # Load queries and qrels for the samples feature
+    queries_file = dataset_dir / "cran.qry"
+    qrels_file = dataset_dir / "cranqrel"
+    all_queries = parse_cran_queries(queries_file)
+    all_qrels = parse_cran_qrels(qrels_file)
+    
+    # Pre-compute ground truth for all queries
+    sample_queries = []
+    for qid in sorted(all_queries.keys()):
+        # Find highly relevant docs (Relevance 1 or 2)
+        rels = sorted([q for q in all_qrels if q["query_id"] == qid and q["relevance"] in {1, 2}], 
+                      key=lambda x: x["relevance"])
+        
+        if rels:
+            sample_queries.append({
+                "id": qid,
+                "text": all_queries[qid],
+                "ground_truth": [{"doc_id": r["doc_id"], "relevance": r["relevance"]} for r in rels]
+            })
+            if len(sample_queries) >= 30: # Limit to 30 nice samples
+                break
+                
     print(f"[SUCCESS] Index built with {len(vsm.inverted_index)} terms.")
 except Exception as e:
     print(f"[ERROR] failed to build index: {e}")
     raw_docs = {}
     vsm = None
+    sample_queries = []
 
 @app.route("/")
 def index():
     return app.send_static_file("index.html")
+
+@app.route("/api/samples", methods=["GET"])
+def get_samples():
+    return jsonify(sample_queries)
 
 @app.route("/api/search", methods=["POST"])
 def search():
