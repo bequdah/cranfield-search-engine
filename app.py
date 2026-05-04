@@ -1,6 +1,8 @@
 import os
 from flask import Flask, request, jsonify
 from pathlib import Path
+from flask_cors import CORS
+
 
 # Adjust path to find src module
 import sys
@@ -9,9 +11,11 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from src.parser import parse_cran_docs, parse_cran_queries, parse_cran_qrels
 from src.preprocess import preprocess_text, preprocess_collection
 from src.vsm import VectorSpaceModel
+from src.rag import generate_rag_answer
 
 # Initialize Flask app to serve static files from 'web' folder
 app = Flask(__name__, static_url_path='', static_folder='web')
+CORS(app)
 
 print("Starting Cranfield Vector Space Model Server...")
 base_dir = Path(__file__).resolve().parent
@@ -84,6 +88,10 @@ def search():
     start_time = time.time()
     
     top_k = vsm.get_top_k(query_tokens, k=k)
+    try:
+       answer = generate_rag_answer(query_text, top_k, raw_docs)
+    except:
+       answer = "No answer available"
     search_time = time.time() - start_time
     
     results = []
@@ -94,12 +102,12 @@ def search():
             "score": round(score, 4),
             "snippet": doc_text[:500] + "..." if len(doc_text) > 500 else doc_text
         })
-        
     return jsonify({
-        "results": results,
-        "query_tokens": query_tokens,
-        "time_ms": round(search_time * 1000)
-    })
+    "results": results,
+    "query_tokens": query_tokens,
+    "answer": answer,
+    "time_ms": round(search_time * 1000)
+})
 
 if __name__ == "__main__":
     print("\n" + "="*50)
