@@ -1,4 +1,5 @@
 import os
+import time
 from flask import Flask, request, jsonify
 from pathlib import Path
 from flask_cors import CORS
@@ -83,15 +84,8 @@ def search():
     query_tokens = preprocess_text(query_text)
     
     # Retrieve top k documents
-    start_time = time.time() if 'time' in globals() else 0
-    import time
     start_time = time.time()
-    
     top_k = vsm.get_top_k(query_tokens, k=k)
-    try:
-       answer = generate_rag_answer(query_text, top_k, raw_docs)
-    except:
-       answer = "No answer available"
     search_time = time.time() - start_time
     
     results = []
@@ -102,15 +96,40 @@ def search():
             "score": round(score, 4),
             "snippet": doc_text[:500] + "..." if len(doc_text) > 500 else doc_text
         })
+
     return jsonify({
-    "results": results,
-    "query_tokens": query_tokens,
-    "answer": answer,
-    "time_ms": round(search_time * 1000)
-})
+        "results": results,
+        "query_tokens": query_tokens,
+        "time_ms": round(search_time * 1000)
+    })
+
+@app.route("/api/answer", methods=["POST"])
+def get_answer():
+    if not vsm:
+        return jsonify({"error": "Index not loaded"}), 500
+        
+    data = request.get_json()
+    query_text = data.get("query", "")
+    results = data.get("results", [])
+    
+    if not query_text or not results:
+        return jsonify({"answer": "No context available."})
+        
+    # Reconstruct top_k format for generate_rag_answer
+    top_k_for_rag = [(res['doc_id'], res['score']) for res in results]
+    
+    try:
+        answer = generate_rag_answer(query_text, top_k_for_rag, raw_docs)
+    except Exception as e:
+        print(f"[ERROR] RAG generation failed: {e}")
+        answer = "Sorry, I couldn't generate an answer at this time."
+        
+    return jsonify({"answer": answer})
 
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("FLASK_ENV") != "production"
     print("\n" + "="*50)
-    print("Server running at: http://127.0.0.1:5000")
+    print(f"Server running at: http://127.0.0.1:{port}")
     print("="*50 + "\n")
-    app.run(debug=True, port=5000)
+    app.run(debug=debug, host="0.0.0.0", port=port)

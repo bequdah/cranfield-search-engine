@@ -1,17 +1,21 @@
 import os
-import google.generativeai as genai
+from google import genai
+from dotenv import load_dotenv
 
-# إعداد مفتاح الـ API (يمكنك وضع المفتاح الخاص بك مباشرة بدل "YOUR_API_KEY_HERE" أو استخدامه كمتغير بيئة)
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyC1Zu2DMYQiAVxB0TGzaen3ISw7TMSKW0o")
-genai.configure(api_key=GEMINI_API_KEY)
+# تحميل متغيرات البيئة من ملف .env
+load_dotenv()
+
+# إعداد مفتاح الـ API
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 def generate_rag_answer(query, top_k, raw_docs):
     if not top_k:
         return "No answer found"
 
-    # 1. أخذ أفضل 3 مستندات (top 3) وجمع نصوصها لتكوين السياق (context)
+    # 1. أخذ جميع المستندات الـ (top-k) وجمع نصوصها لتكوين السياق (context)
     texts = []
-    for doc_id, _ in top_k[:3]:
+    for doc_id, _ in top_k:
         text = raw_docs.get(doc_id, "")
         if text:
             texts.append(text)
@@ -33,10 +37,12 @@ def generate_rag_answer(query, top_k, raw_docs):
     {query}
     """
     
-    # 3. إرسال السياق والسؤال إلى نموذج Gemini (استخدمنا gemini-2.5-flash لسرعته وكفاءته)
+    # 3. إرسال السياق والسؤال إلى نموذج Gemini الجديد (gemini-3-flash-preview)
     try:
-        model = genai.GenerativeModel('gemini-2.5-flash')
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model='gemini-3-flash-preview',
+            contents=prompt
+        )
         return response.text.strip()
     except Exception as e:
-        return f"Error generating answer from LLM: {str(e)}"
+        return f"Error generating answer from LLM: {str(e)}"

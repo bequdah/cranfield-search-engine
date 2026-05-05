@@ -416,7 +416,7 @@
         // Load sample queries on startup
         window.addEventListener('DOMContentLoaded', async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/samples')
+                const response = await fetch('/api/samples')
                 sampleQueries = await response.json();
 
                 const select = document.getElementById('sampleSelect');
@@ -472,12 +472,16 @@
 
             resultsContainer.innerHTML = '';
             tokensDisplay.innerHTML = '';
-            answerBox.style.display = 'none';
-            answerContent.innerHTML = '';
+            
+            // 1. Show answer box immediately with loading state
+            answerBox.style.display = 'block';
+            answerContent.innerHTML = '<span style="color: var(--text-muted); font-style: italic; animation: pulse 1.5s infinite;">Generating intelligent summary based on top results...</span>';
+            
             loader.style.display = 'block';
 
             try {
-                const response = await fetch('http://localhost:5000/api/search', {
+                // STEP 1: Get VSM Results (FAST)
+                const response = await fetch('/api/search', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ query: query, k: 10 })
@@ -485,12 +489,6 @@
 
                 const data = await response.json();
                 loader.style.display = 'none';
-
-                // Display Answer (RAG)
-                if (data.answer) {
-                    answerContent.innerText = data.answer;
-                    answerBox.style.display = 'block';
-                }
 
                 // Display Tokens
                 if (data.query_tokens) {
@@ -503,36 +501,50 @@
                 }
 
                 // Display Stats
-                if (data.results.length > 0) {
+                if (data.results && data.results.length > 0) {
                     const stats = document.createElement('div');
                     stats.className = 'stats';
                     stats.innerText = `Found ${data.results.length} results in ${data.time_ms}ms`;
                     resultsContainer.appendChild(stats);
+                    
+                    // Display Results
+                    data.results.forEach((item, index) => {
+                        const delay = index * 0.05; 
+                        const card = document.createElement('div');
+                        card.className = 'result-card';
+                        card.style.animationDelay = `${delay}s`;
+                        card.innerHTML = `
+                            <div class="result-header">
+                                <div class="doc-id">Document #${item.doc_id}</div>
+                                <div class="score">Score: ${item.score}</div>
+                            </div>
+                            <div class="snippet">${item.snippet}</div>
+                        `;
+                        resultsContainer.appendChild(card);
+                    });
+
+                    // STEP 2: Get RAG Answer (SLOW - in background)
+                    fetch('/api/answer', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ query: query, results: data.results })
+                    })
+                    .then(res => res.json())
+                    .then(answerData => {
+                        answerContent.innerText = answerData.answer;
+                    })
+                    .catch(err => {
+                        answerContent.innerText = "Error generating AI answer.";
+                    });
+
                 } else {
                     resultsContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); margin-top: 3rem;">No relevant documents found.</div>';
+                    answerBox.style.display = 'none';
                 }
-
-                // Display Results
-                data.results.forEach((item, index) => {
-                    const delay = index * 0.05; // Staggered animation
-
-                    const card = document.createElement('div');
-                    card.className = 'result-card';
-                    card.style.animationDelay = `${delay}s`;
-
-                    card.innerHTML = `
-                        <div class="result-header">
-                            <div class="doc-id">Document #${item.doc_id}</div>
-                            <div class="score">Score: ${item.score}</div>
-                        </div>
-                        <div class="snippet">${item.snippet}</div>
-                    `;
-                    resultsContainer.appendChild(card);
-                });
 
             } catch (err) {
                 loader.style.display = 'none';
-                resultsContainer.innerHTML = '<div style="color: #ef4444; text-align: center; margin-top: 2rem;">Error connecting to server. Make sure app.py is running.</div>';
+                resultsContainer.innerHTML = '<div style="color: #ef4444; text-align: center; margin-top: 2rem;">Error connecting to server.</div>';
             }
         }
 

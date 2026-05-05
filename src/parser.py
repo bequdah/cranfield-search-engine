@@ -30,7 +30,7 @@ def parse_cran_docs(file_path: str | Path) -> Dict[int, str]:
 
         title = " ".join(line for line in title_lines if line).strip()
         abstract = " ".join(line for line in abstract_lines if line).strip()
-        full_text = f"{title} {abstract}".strip()
+        full_text = f"{title} {title} {abstract}".strip()
 
         docs[current_id] = full_text
 
