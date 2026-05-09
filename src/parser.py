@@ -52,8 +52,10 @@ def parse_cran_docs(file_path: str | Path) -> Dict[int, str]:
                 abstract_lines = []
                 continue
 
-            # Field marker
-            if line.startswith(".") and line.split()[0] in {".I", ".T", ".W", ".A", ".B"}:
+            # Field marker — in SMART format these are always alone on a line.
+            # Exact match prevents content lines starting with '.' (e.g. '.5 mach')
+            # from being mistakenly treated as field markers.
+            if line.strip() in {".T", ".W", ".A", ".B", ".X"}:
                 current_field = line.strip()
                 continue
 
@@ -109,8 +111,10 @@ def parse_cran_queries(file_path: str | Path) -> Dict[int, str]:
                 query_lines = []
                 continue
 
-            # Field marker
-            if line.startswith(".") and line.split()[0] in {".I", ".T", ".W", ".A", ".B"}:
+            # Field marker — in SMART format these are always alone on a line.
+            # Exact match prevents content lines starting with '.' (e.g. '.5 mach')
+            # from being mistakenly treated as field markers.
+            if line.strip() in {".T", ".W", ".A", ".B", ".X"}:
                 current_field = line.strip()
                 continue
 

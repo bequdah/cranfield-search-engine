@@ -1,5 +1,6 @@
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from flask import Flask, request, jsonify
 from pathlib import Path
 from flask_cors import CORS
@@ -17,6 +18,9 @@ from src.rag import generate_rag_answer
 # Initialize Flask app to serve static files from 'web' folder
 app = Flask(__name__, static_url_path='', static_folder='web')
 CORS(app)
+
+# Thread pool for non-blocking RAG calls (Gemini API can take 2-5s)
+_rag_executor = ThreadPoolExecutor(max_workers=4)
 
 print("Starting Cranfield Vector Space Model Server...")
 base_dir = Path(__file__).resolve().parent
@@ -118,8 +122,17 @@ def get_answer():
     # Reconstruct top_k format for generate_rag_answer
     top_k_for_rag = [(res['doc_id'], res['score']) for res in results]
     
+    # Run Gemini call in a thread so Flask can still serve other requests.
+    # A 30-second timeout prevents an indefinitely hanging API call.
+    RAG_TIMEOUT = 30
     try:
-        answer = generate_rag_answer(query_text, top_k_for_rag, raw_docs)
+        future = _rag_executor.submit(
+            generate_rag_answer, query_text, top_k_for_rag, raw_docs
+        )
+        answer = future.result(timeout=RAG_TIMEOUT)
+    except FuturesTimeoutError:
+        print("[WARN] RAG generation timed out.")
+        answer = "Answer generation timed out. Please try again."
     except Exception as e:
         print(f"[ERROR] RAG generation failed: {e}")
         answer = "Sorry, I couldn't generate an answer at this time."
@@ -132,4 +145,6 @@ if __name__ == "__main__":
     print("\n" + "="*50)
     print(f"Server running at: http://127.0.0.1:{port}")
     print("="*50 + "\n")
-    app.run(debug=debug, host="0.0.0.0", port=port)
+    # threaded=True (default in Flask 1.0+): each request runs in its own thread,
+    # so a slow RAG call won't block other users.
+    app.run(debug=debug, host="0.0.0.0", port=port, threaded=True)

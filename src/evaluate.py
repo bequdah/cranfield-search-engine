@@ -41,7 +41,10 @@ def compute_map(all_retrieved: Dict[int, List[int]], qrels: List[dict]) -> float
             relevant_by_query[q_id].add(d_id)
 
     aps = []
-    all_query_ids = set(all_retrieved.keys()) | set(relevant_by_query.keys())
+    # Standard IR practice: only evaluate queries that have at least one
+    # relevant document in the qrels (TREC convention). Including queries
+    # with no relevant docs adds AP=0 to the average and artificially deflates MAP.
+    all_query_ids = set(relevant_by_query.keys())
 
     for q_id in all_query_ids:
         relevant_docs = relevant_by_query.get(q_id, set())
@@ -92,7 +95,12 @@ def compute_ndcg(all_retrieved: Dict[int, List[int]], qrels: List[dict], k: int 
         true_rel_by_query[q_id][d_id] = convert_relevance(raw_rel)
 
     ndcg_scores = []
-    all_query_ids = set(all_retrieved.keys()) | set(true_rel_by_query.keys())
+    # Standard IR practice: only evaluate queries that have at least one
+    # graded-relevant document (gain > 0) in the qrels.
+    all_query_ids = set(
+        q_id for q_id, rels in true_rel_by_query.items()
+        if any(r > 0 for r in rels.values())
+    )
 
     for q_id in all_query_ids:
         doc_relevances = true_rel_by_query.get(q_id, {})

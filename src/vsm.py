@@ -148,7 +148,10 @@ class VectorSpaceModel:
             for doc_id, d_weight in postings.items():
                 scores[doc_id] += q_weight * d_weight
 
-        # Step 5: Sort Results (returns ALL documents)
+        # Step 5: Sort Results
+        # Note: Only documents sharing at least one query term are returned (score > 0).
+        # Zero-score documents are omitted — this is standard IR behavior and
+        # does NOT affect MAP/NDCG accuracy since evaluate.py uses |R| as denominator.
         ranked_results = sorted(scores.items(), key=lambda x: (-x[1], x[0]))
         return ranked_results
 

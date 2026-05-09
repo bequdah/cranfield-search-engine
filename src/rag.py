@@ -25,7 +25,6 @@ def generate_rag_answer(query, top_k, raw_docs):
     if not context.strip():
         return "No context available to generate an answer."
 
-    # 2. تجهيز الـ Prompt لإرساله للمودل للحصول على ملخص 2-3 جمل
     prompt = f"""
     Based on the following context, answer the query in a clear summary of 2 to 3 sentences maximum. 
     Do not copy the text directly, but paraphrase the answer clearly based only on the provided context.
@@ -45,4 +44,4 @@ def generate_rag_answer(query, top_k, raw_docs):
         )
         return response.text.strip()
     except Exception as e:
-        return f"Error generating answer from LLM: {str(e)}"
+        return f"Error generating answer from LLM: {str(e)}"
