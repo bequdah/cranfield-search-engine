@@ -88,11 +88,27 @@ def main():
     print(f"NDCG@{K} : {ndcg_score:.4f}")
     print("=" * 50)
 
-    # Sample output for demonstration
-    sample_q = next(iter(clean_queries))
-    print("\nSample Query:")
-    print(raw_queries[sample_q])
-    print("Top Results:", all_retrieved[sample_q][:5])
+    # --- Specific Query Test (Requested by User) ---
+    target_q_id = 7
+    if target_q_id in raw_queries:
+        print(f"\n>>> Results for Query ID: {target_q_id}")
+        print(f"Query: {raw_queries[target_q_id]}")
+        
+        # Ground Truth
+        gt_docs = [q['doc_id'] for q in qrels if q['query_id'] == target_q_id and q['relevance'] > 0]
+        print(f"\nGround Truth (Relevance > 0):")
+        print(gt_docs)
+        
+        # Top-K Results
+        top_k_results = all_retrieved[target_q_id][:K]
+        print(f"\nTop-{K} Results from Model:")
+        print(top_k_results)
+        
+        # Matches
+        matches = set(gt_docs).intersection(set(top_k_results))
+        print(f"\nMatches in Top-{K}: {list(matches)}")
+        print(f"Precision@{K}: {len(matches)/K:.2f}")
+    # -----------------------------------------------
 
 
 if __name__ == "__main__":

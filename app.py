@@ -44,8 +44,8 @@ try:
     # Pre-compute ground truth for all queries
     sample_queries = []
     for qid in sorted(all_queries.keys()):
-        # Find highly relevant docs (Relevance 1 or 2)
-        rels = sorted([q for q in all_qrels if q["query_id"] == qid and q["relevance"] in {1, 2}], 
+        # Find all relevant docs (Relevance 1, 2, 3, 4)
+        rels = sorted([q for q in all_qrels if q["query_id"] == qid and q["relevance"] > 0], 
                       key=lambda x: x["relevance"])
         
         if rels:
