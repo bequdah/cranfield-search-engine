@@ -58,8 +58,8 @@ Ensure you have **Python 3.10** or higher installed on your system.
 ### 2. Setup & Installation
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/bequdah/Cranfield-IR-RAG.git
-   cd Cranfield-IR-RAG
+   git clone https://github.com/bequdah/cranfield-search-engine.git
+   cd cranfield-search-engine
    ```
 
 2. **Create a Virtual Environment** (Optional but recommended):
